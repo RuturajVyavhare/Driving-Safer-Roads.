@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Driving Risk Calculator</title>
+
+    <style>
+        body {
+            font-family: "Segoe UI", Arial;
+            margin: 0;
+            padding: 0;
+            background: #f6f7fb;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 40px;
+        }
+
+        .container {
+            background: #ffffff;
+            padding: 30px 40px;
+            width: 420px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.10);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #333;
+        }
+
+        label {
+            display: block;
+            margin-top: 12px;
+            font-weight: bold;
+            color: #444;
+        }
+
+        input {
+            margin-top: 5px;
+            padding: 10px;
+            width: 95%;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 25px;
+            background: #0d6efd;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #0b5ed7;
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            background: #eef3ff;
+            border-left: 5px solid #0d6efd;
+            border-radius: 6px;
+        }
+
+        .result p {
+            font-size: 16px;
+            color: #333;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <h2>Driving Risk Calculator</h2>
+
+    <label>Average speed (km/h):</label>
+    <input id="avg_speed" type="number">
+
+    <label>Max speed (km/h):</label>
+    <input id="max_speed" type="number">
+
+    <label>Harsh brakes (count):</label>
+    <input id="harsh_brakes" type="number">
+
+    <label>Rapid accelerations (count):</label>
+    <input id="rapid_accel" type="number">
+
+    <label>Night driving (0.0 - 1.0):</label>
+    <input id="night_pct" type="number" step="0.01">
+
+    <label>Phone usage events:</label>
+    <input id="phone_events" type="number">
+
+    <label>Trip count:</label>
+    <input id="trip_count" type="number">
+
+    <label>Vehicle age (years):</label>
+    <input id="vehicle_age" type="number">
+
+    <label>Past accidents (0–3+):</label>
+    <input id="past_acc" type="number">
+
+    <label>Weather risk (0.0 - 1.0):</label>
+    <input id="weather" type="number" step="0.01">
+
+    <button onclick="calculateRisk()">Calculate Risk</button>
+
+    <div id="output" class="result"></div>
+</div>
+
+
+<script>
+function clamp(v, lo, hi) {
+    return Math.min(Math.max(v, lo), hi);
+}
+
+function calculateRisk() {
+
+    let avg = Number(document.getElementById("avg_speed").value);
+    let max = Number(document.getElementById("max_speed").value);
+    let hb = Number(document.getElementById("harsh_brakes").value);
+    let ra = Number(document.getElementById("rapid_accel").value);
+    let night = Number(document.getElementById("night_pct").value);
+    let phone = Number(document.getElementById("phone_events").value);
+    let trips = Number(document.getElementById("trip_count").value);
+    let age = Number(document.getElementById("vehicle_age").value);
+    let acc = Number(document.getElementById("past_acc").value);
+    let weatherRisk = Number(document.getElementById("weather").value);
+
+    if (trips < 1) trips = 1;
+
+    // Normalize
+    let s_avg = avg / 120;
+    let s_max = max / 200;
+    let s_hb = hb / (1 + Math.log(1 + trips));
+    let s_ra = ra / (1 + Math.log(1 + trips));
+    let s_phone = phone / (1 + Math.log(1 + trips));
+    let s_age = age / 15;
+    let s_acc = acc / 3;
+
+    // Weights
+    let w_avg = 0.25, w_max = 0.20, w_hb = 0.18, w_ra = 0.15;
+    let w_night = 0.12, w_phone = 0.20, w_age = 0.15;
+    let w_acc = 0.30, w_weather = 0.18;
+
+    // Risk calculation
+    let risk = 0;
+    risk += w_avg * s_avg;
+    risk += w_max * s_max;
+    risk += w_hb * s_hb;
+    risk += w_ra * s_ra;
+    risk += w_night * night;
+    risk += w_phone * s_phone;
+    risk += w_age * s_age;
+    risk += w_acc * s_acc;
+    risk += w_weather * weatherRisk;
+
+    // Interaction penalties
+    risk += 0.10 * (night * s_avg);
+    risk += 0.12 * (phone * hb) / (1 + trips / 1000);
+
+    let risk_score = clamp(risk / 2.8, 0, 1);
+
+    // Bucket
+    let bucket = "LOW";
+    if (risk_score >= 0.66) bucket = "HIGH";
+    else if (risk_score >= 0.33) bucket = "MEDIUM";
+
+    document.getElementById("output").innerHTML = `
+        <p><b>Risk Score:</b> ${risk_score.toFixed(4)}</p>
+        <p><b>Risk Bucket:</b> ${bucket}</p>
+    `;
+}
+</script>
+
+</body>
+</html>
